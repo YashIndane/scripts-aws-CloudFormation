@@ -1,0 +1,109 @@
+Parameters:
+   Imgid:
+        Type: String
+        Description: Id of your image
+
+   devicename:
+        Type: String
+        Description: name of block device
+
+   instyp:
+        Type: String
+        Description: your instance type
+
+   kname:
+        Type: String
+        Description: your key name
+
+   vpcCIDR:
+        Type: String
+        Description: Your VPC CIDR
+
+   subCIDR:
+        Type: String
+        Description: Your Subnet CIDR 
+    
+Resources:
+   myVPC:
+        Type: AWS::EC2::VPC
+        Properties:
+              CidrBlock: !Ref vpcCIDR
+
+   mYInternetGateway:
+       Type: AWS::EC2::InternetGateway
+     
+
+   AttachGateway:
+       Type: AWS::EC2::VPCGatewayAttachment
+       Properties:
+              VpcId: !Ref myVPC
+              InternetGatewayId: !Ref mYInternetGateway
+
+   mySubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+              VpcId: !Ref myVPC
+              CidrBlock: !Ref subCIDR
+              AvailabilityZone: !Select [ 0 , !GetAZs ]
+
+   myRouteTable:
+       Type: AWS::EC2::RouteTable
+       Properties:
+             VpcId:  !Ref myVPC
+
+   myRoute:
+      Type: AWS::EC2::Route
+      DependsOn: mYInternetGateway
+      Properties:
+            RouteTableId: !Ref myRouteTable
+            DestinationCidrBlock: 0.0.0.0/0
+            GatewayId: !Ref mYInternetGateway
+
+   mySubnetRouteTableAssociation:
+     Type: AWS::EC2::SubnetRouteTableAssociation
+     Properties: 
+            SubnetId:  !Ref mySubnet1
+            RouteTableId: !Ref myRouteTable
+
+   InstanceSecurityGroup:
+     Type: AWS::EC2::SecurityGroup
+     Properties:
+      GroupDescription: Allow http to client host
+      VpcId: !Ref myVPC
+      SecurityGroupIngress:
+      - IpProtocol: -1
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: -1
+        CidrIp: 0.0.0.0/0
+
+   MyEC2Instance: 
+     Type: AWS::EC2::Instance
+     Properties: 
+           ImageId: !Ref Imgid
+           SubnetId: !Ref mySubnet1
+           SecurityGroupIds: 
+               - !Ref  InstanceSecurityGroup
+           InstanceType: !Ref instyp
+           KeyName: !Ref kname
+           BlockDeviceMappings: 
+           - DeviceName: !Ref  devicename
+             Ebs: 
+                VolumeType: "io1"
+                Iops: "200"
+                DeleteOnTermination: "true"
+                VolumeSize: "8"
+
+   MyEIP:
+     Type: AWS::EC2::EIP
+     Properties:
+           InstanceId: !Ref MyEC2Instance
+
+
+ 
+        
+        
+
+    
+      
+         
